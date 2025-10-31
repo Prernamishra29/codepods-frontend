@@ -1,9 +1,12 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import PodCard from '../components/ui/PodCard'
 import Button from '../components/ui/Button'
+import Avatar from '../components/ui/Avatar'
+import AuthService from '../services/Auth'
 import { User, Bell, Trophy, Star, Plus, X, Search, Settings, LogOut, Mail, Edit3, ChevronDown } from 'lucide-react'
 
 // Define TypeScript interfaces
@@ -29,6 +32,12 @@ interface PodCardProps {
 }
 
 export default function Dashboard() {
+  const router = useRouter();
+  
+  // User data state
+  const [userName, setUserName] = useState('User');
+  const [userEmail, setUserEmail] = useState('');
+
   // State for user skills
   const [skillsTeach, setSkillsTeach] = useState<string[]>(['React', 'Node.js'])
   const [skillsLearn, setSkillsLearn] = useState<string[]>(['AI', 'DevOps'])
@@ -93,6 +102,16 @@ export default function Dashboard() {
   
   // Handle joining/leaving pods
   const toggleJoinPod = (id: number) => {
+    // Check if user is authenticated with GitHub
+    if (!AuthService.isGitHubAuthenticated()) {
+      const confirmAuth = confirm('You need to authenticate with GitHub to join pods. Continue with GitHub?');
+      if (confirmAuth) {
+        console.log('🔐 GitHub authentication required for joining pod');
+        AuthService.loginWithGitHub();
+      }
+      return;
+    }
+
     setPods(pods.map(pod => 
       pod.id === id ? { ...pod, joined: !pod.joined } : pod
     ))
@@ -123,6 +142,40 @@ export default function Dashboard() {
   const removeSkillLearn = (skillToRemove: string) => {
     setSkillsLearn(skillsLearn.filter(skill => skill !== skillToRemove))
   }
+
+  // Load user data
+  useEffect(() => {
+    const updateUserData = () => {
+      const user = AuthService.getCurrentUser();
+      if (user) {
+        setUserName(user.name || 'User');
+        setUserEmail(user.email || '');
+      }
+    };
+
+    // Initial load
+    updateUserData();
+
+    // Listen for user data updates
+    window.addEventListener('userDataUpdated', updateUserData);
+
+    return () => {
+      window.removeEventListener('userDataUpdated', updateUserData);
+    };
+  }, []);
+
+  // Handle logout
+  const handleLogout = () => {
+    console.log('🚪 Logout button clicked from Dashboard');
+    setUserMenuOpen(false); // Close dropdown
+    AuthService.logout();
+    console.log('✅ Auth data cleared, redirecting to homepage...');
+    router.push('/');
+    // Force page reload to ensure clean state
+    setTimeout(() => {
+      window.location.href = '/';
+    }, 100);
+  };
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -157,7 +210,7 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-3 md:gap-4">
           <div className="relative hidden md:block">
-            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
+            <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2. 5" />
             <input 
               type="text" 
               placeholder="Search pods..." 
@@ -171,11 +224,11 @@ export default function Dashboard() {
           {/* User Menu */}
           <div className="relative user-menu" ref={userMenuRef}>
             <button 
-              className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-indigo-600 flex items-center justify-center font-bold hover:bg-indigo-700 transition-colors"
+              className="flex items-center gap-2 hover:opacity-80 transition-opacity"
               onClick={() => setUserMenuOpen(!userMenuOpen)}
             >
-              U
-              <ChevronDown className="w-3 h-3 ml-1" />
+              <Avatar name={userName} size={40} />
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             </button>
             
             <AnimatePresence>
@@ -188,8 +241,8 @@ export default function Dashboard() {
                   transition={{ duration: 0.2 }}
                 >
                   <div className="px-4 py-2 border-b border-gray-700">
-                    <p className="font-medium">User Name</p>
-                    <p className="text-sm text-gray-400">user@example.com</p>
+                    <p className="font-medium truncate">{userName}</p>
+                    <p className="text-sm text-gray-400 truncate">{userEmail || 'No email'}</p>
                   </div>
                   
                   <button className="w-full text-left px-4 py-2 hover:bg-gray-700 flex items-center gap-2">
@@ -209,7 +262,10 @@ export default function Dashboard() {
                   
                   <div className="border-t border-gray-700 my-1"></div>
                   
-                  <button className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400 flex items-center gap-2">
+                  <button 
+                    onClick={handleLogout}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-red-400 flex items-center gap-2"
+                  >
                     <LogOut className="w-4 h-4" />
                     <span>Logout</span>
                   </button>
@@ -277,7 +333,10 @@ export default function Dashboard() {
                   <span>Badges</span>
                 </button>
                 
-                <button className="flex items-center gap-3 text-lg text-red-400 mt-10">
+                <button 
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 text-lg text-red-400 mt-10"
+                >
                   <LogOut className="w-5 h-5" />
                   <span>Logout</span>
                 </button>
