@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL;
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || process.env.API_BASE_URL || 'https://codepods-backend.onrender.com';
 
 // Log the API base URL on initialization (for debugging)
 if (typeof window !== 'undefined') {
@@ -150,45 +150,20 @@ class AuthService {
 
   // GitHub OAuth Authentication
   loginWithGitHub() {
-    const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/github/callback`;
-    const scope = 'read:user user:email';
-    
     // Store current page to redirect back after auth
     localStorage.setItem('githubAuthRedirect', window.location.pathname);
-    
-    // Redirect to GitHub OAuth
-    window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&scope=${scope}`;
+
+    // Start OAuth on backend
+    window.location.href = `${API_BASE_URL}/api/auth/github`;
   }
 
-  // Handle GitHub OAuth callback
-  async handleGitHubCallback(code) {
-    try {
-      console.log('Handling GitHub OAuth callback...');
-      
-      const response = await api.post('/api/users/auth/github', { code });
-      
-      // Store token and user data
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('githubAuthenticated', 'true');
-        console.log('✅ Token saved to localStorage');
-      }
-      
-      if (response.data.user) {
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        console.log('✅ GitHub user data saved:', response.data.user);
-      }
-      
-      // Dispatch event to notify components about user data update
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new Event('userDataUpdated'));
-      }
-      
-      return response.data;
-    } catch (error) {
-      console.error('❌ GitHub OAuth error:', error.response?.data || error.message);
-      throw error.response?.data || { message: 'GitHub authentication failed' };
+  // Handle GitHub success redirect (token in query string)
+  handleGitHubSuccessRedirect(token) {
+    if (!token) return;
+    localStorage.setItem('token', token);
+    localStorage.setItem('githubAuthenticated', 'true');
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new Event('userDataUpdated'));
     }
   }
 

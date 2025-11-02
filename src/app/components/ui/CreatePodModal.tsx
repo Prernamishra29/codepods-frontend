@@ -1,183 +1,215 @@
 'use client';
 
 import { useState } from 'react';
-import { FaGithub, FaTimes } from 'react-icons/fa';
-import AuthService from '@/app/services/Auth';
-import Button from './Button';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X } from 'lucide-react';
 
 interface CreatePodModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreatePod?: (podData: any) => void;
+  onCreatePod?: (podData: {
+    name: string;
+    description: string;
+    githubRepo?: string;
+    podType: 'Project' | 'Learning' | 'Research';
+  }) => void;
 }
 
 export default function CreatePodModal({ isOpen, onClose, onCreatePod }: CreatePodModalProps) {
-  const [podData, setPodData] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
-    skills: [] as string[],
+    githubRepo: '',
+    podType: 'Project' as 'Project' | 'Learning' | 'Research',
   });
-  const [newSkill, setNewSkill] = useState('');
-  const isGitHubAuth = AuthService.isGitHubAuthenticated();
+  const [errors, setErrors] = useState({
+    name: '',
+  });
 
-  if (!isOpen) return null;
+  const validateForm = () => {
+    const newErrors = { name: '' };
+    let isValid = true;
 
-  const handleGitHubAuth = () => {
-    console.log('🔐 GitHub authentication required for creating pod');
-    AuthService.loginWithGitHub();
-  };
-
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !podData.skills.includes(newSkill.trim())) {
-      setPodData({ ...podData, skills: [...podData.skills, newSkill.trim()] });
-      setNewSkill('');
+    if (!formData.name.trim()) {
+      newErrors.name = 'Pod Name is required';
+      isValid = false;
     }
-  };
 
-  const handleRemoveSkill = (skill: string) => {
-    setPodData({ ...podData, skills: podData.skills.filter(s => s !== skill) });
+    setErrors(newErrors);
+    return isValid;
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!isGitHubAuth) {
-      alert('Please authenticate with GitHub first');
+    if (!validateForm()) {
       return;
     }
 
     if (onCreatePod) {
-      onCreatePod(podData);
+      onCreatePod({
+        name: formData.name,
+        description: formData.description,
+        githubRepo: formData.githubRepo || undefined,
+        podType: formData.podType,
+      });
     }
-    
+
     // Reset form
-    setPodData({ name: '', description: '', skills: [] });
+    setFormData({
+      name: '',
+      description: '',
+      githubRepo: '',
+      podType: 'Project',
+    });
+    setErrors({ name: '' });
+    onClose();
+  };
+
+  const handleClose = () => {
+    setFormData({
+      name: '',
+      description: '',
+      githubRepo: '',
+      podType: 'Project',
+    });
+    setErrors({ name: '' });
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-xl shadow-lg w-full max-w-md relative">
-        {/* Close button */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
-        >
-          <FaTimes className="w-5 h-5" />
-        </button>
-
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4 text-white">Create New Pod</h2>
-
-          {!isGitHubAuth ? (
-            <div className="space-y-4">
-              <div className="bg-yellow-500/10 border border-yellow-500 text-yellow-500 p-4 rounded-lg">
-                <p className="font-semibold mb-2">🔐 GitHub Authentication Required</p>
-                <p className="text-sm">
-                  To create a pod, you need to authenticate with GitHub. This helps us verify your identity and connect with your repositories.
-                </p>
-              </div>
-
-              <button
-                onClick={handleGitHubAuth}
-                className="w-full flex items-center justify-center gap-3 p-3 rounded bg-gray-700 hover:bg-gray-600 transition text-white font-medium"
-              >
-                <FaGithub className="text-xl" />
-                Authenticate with GitHub
-              </button>
-
-              <button
-                onClick={onClose}
-                className="w-full p-3 text-gray-400 hover:text-white transition"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Pod Name</label>
-                <input
-                  type="text"
-                  value={podData.name}
-                  onChange={(e) => setPodData({ ...podData, name: e.target.value })}
-                  placeholder="Enter pod name"
-                  required
-                  className="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Description</label>
-                <textarea
-                  value={podData.description}
-                  onChange={(e) => setPodData({ ...podData, description: e.target.value })}
-                  placeholder="Describe your pod"
-                  required
-                  rows={3}
-                  className="w-full p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-400 mb-2">Skills Required</label>
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    value={newSkill}
-                    onChange={(e) => setNewSkill(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddSkill())}
-                    placeholder="Add a skill"
-                    className="flex-1 p-3 rounded bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddSkill}
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded text-white transition"
-                  >
-                    Add
-                  </button>
-                </div>
-                
-                {podData.skills.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    {podData.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="px-3 py-1 bg-indigo-600 rounded-full text-sm flex items-center gap-2"
-                      >
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveSkill(skill)}
-                          className="hover:text-red-400"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-3 pt-4">
-                <Button type="submit" className="flex-1">
-                  Create Pod
-                </Button>
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Blurred background overlay */}
+          <motion.div
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            onClick={handleClose}
+          />
+          
+          {/* Modal */}
+          <div className="fixed inset-0 flex items-center justify-center z-50 p-4 pointer-events-none">
+            <motion.div
+              className="bg-gray-900 rounded-2xl shadow-2xl w-full max-w-2xl pointer-events-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between p-5 border-b border-gray-800">
+                <h2 className="text-2xl font-bold text-white">Create New Pod</h2>
                 <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 p-3 bg-gray-700 hover:bg-gray-600 rounded text-white transition"
+                  onClick={handleClose}
+                  className="text-gray-400 hover:text-white transition-colors"
+                  aria-label="Close modal"
                 >
-                  Cancel
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-            </form>
-          )}
-        </div>
-      </div>
-    </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="p-5 space-y-4">
+                {/* Pod Name and Pod Type in a row */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Pod Name */}
+                  <div>
+                    <label htmlFor="podName" className="block text-sm font-medium text-gray-300 mb-2">
+                      Pod Name <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      id="podName"
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => {
+                        setFormData({ ...formData, name: e.target.value });
+                        if (errors.name) setErrors({ ...errors, name: '' });
+                      }}
+                      placeholder="Enter pod name"
+                      className={`w-full px-4 py-2.5 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-colors ${
+                        errors.name
+                          ? 'focus:ring-red-500 border border-red-500'
+                          : 'focus:ring-indigo-500 border border-gray-700'
+                      }`}
+                    />
+                    {errors.name && (
+                      <p className="mt-1 text-sm text-red-400">{errors.name}</p>
+                    )}
+                  </div>
+
+                  {/* Pod Type */}
+                  <div>
+                    <label htmlFor="podType" className="block text-sm font-medium text-gray-300 mb-2">
+                      Pod Type
+                    </label>
+                    <select
+                      id="podType"
+                      value={formData.podType}
+                      onChange={(e) => setFormData({ ...formData, podType: e.target.value as 'Project' | 'Learning' | 'Research' })}
+                      className="w-full px-4 py-2.5 rounded-lg bg-gray-800 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-700 transition-colors"
+                    >
+                      <option value="Project">Project</option>
+                      <option value="Learning">Learning</option>
+                      <option value="Research">Research</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    placeholder="Describe your pod..."
+                    rows={3}
+                    className="w-full px-4 py-2.5 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-700 transition-colors resize-none"
+                  />
+                </div>
+
+                {/* GitHub Repository Link */}
+                <div>
+                  <label htmlFor="githubRepo" className="block text-sm font-medium text-gray-300 mb-2">
+                    GitHub Repository Link <span className="text-gray-500 text-xs">(optional)</span>
+                  </label>
+                  <input
+                    id="githubRepo"
+                    type="url"
+                    value={formData.githubRepo}
+                    onChange={(e) => setFormData({ ...formData, githubRepo: e.target.value })}
+                    placeholder="https://github.com/username/repo"
+                    className="w-full px-4 py-2.5 rounded-lg bg-gray-800 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 border border-gray-700 transition-colors"
+                  />
+                </div>
+
+                {/* Buttons */}
+                <div className="flex gap-3 pt-3">
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-gray-800 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors font-medium"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors font-medium"
+                  >
+                    Create Pod
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }
-
-

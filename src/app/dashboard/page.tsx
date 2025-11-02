@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import PodCard from '../components/ui/PodCard'
 import Button from '../components/ui/Button'
 import Avatar from '../components/ui/Avatar'
+import CreatePodModal from '../components/ui/CreatePodModal'
 import AuthService from '../services/Auth'
 import { User, Bell, Trophy, Star, Plus, X, Search, Settings, LogOut, Mail, Edit3, ChevronDown } from 'lucide-react'
 
@@ -72,6 +73,9 @@ export default function Dashboard() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [activeSection, setActiveSection] = useState('pods') // For mobile view
+  
+  // State for Create Pod Modal
+  const [isCreatePodModalOpen, setIsCreatePodModalOpen] = useState(false)
   
   // Ref for user menu to handle click outside
   const userMenuRef = useRef<HTMLDivElement>(null)
@@ -355,9 +359,18 @@ export default function Dashboard() {
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-3">
-            <h2 className="text-xl font-semibold">🔥 Active Pods</h2>
+            <h2 className="text-xl font-semibold"> Active Pods</h2>
             
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsCreatePodModalOpen(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                Create Pod
+              </button>
+              
+              <div className="flex gap-2">
               <button 
                 className={`px-3 py-1 rounded-full text-sm ${activeFilter === 'all' ? 'bg-indigo-600' : 'bg-gray-700'}`}
                 onClick={() => setActiveFilter('all')}
@@ -376,6 +389,7 @@ export default function Dashboard() {
               >
                 Available
               </button>
+              </div>
             </div>
           </div>
           
@@ -546,6 +560,17 @@ export default function Dashboard() {
           </motion.section>
         </div>
       </div>
+
+      {/* Create Pod Modal */}
+      <CreatePodModal
+        isOpen={isCreatePodModalOpen}
+        onClose={() => setIsCreatePodModalOpen(false)}
+        onCreatePod={(podData) => {
+          console.log('Pod created:', podData);
+          // Navigate to Podroom page
+          router.push('/pods/room');
+        }}
+      />
     </div>
   )
 }
