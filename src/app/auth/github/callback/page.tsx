@@ -11,45 +11,42 @@ function GitHubCallbackInner() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const handleCallback = async () => {
-      const code = searchParams.get("code");
-      const errorParam = searchParams.get("error");
+    const token = searchParams.get("token");
+    const errorParam = searchParams.get("error");
 
-      if (errorParam) {
-        setError("GitHub authentication was cancelled or failed.");
-        setTimeout(() => router.push("/login"), 3000);
-        return;
-      }
+    if (errorParam) {
+      setError("GitHub authentication was cancelled or failed.");
+      setTimeout(() => router.push("/login"), 3000);
+      return;
+    }
 
-      if (!code) {
-        setError("No authorization code received from GitHub.");
-        setTimeout(() => router.push("/login"), 3000);
-        return;
-      }
+    if (!token) {
+      setError("No token received from GitHub authentication.");
+      setTimeout(() => router.push("/login"), 3000);
+      return;
+    }
 
-      try {
-        setStatus("Authenticating with GitHub...");
-        const response = await AuthService.handleGitHubCallback(code);
+    setStatus("Authenticating with GitHub...");
+    
+    try {
+      AuthService.handleGitHubSuccessRedirect(token);
+      
+      setStatus("Success! Redirecting to dashboard...");
+      console.log("✅ GitHub authentication successful");
 
-        setStatus("Success! Redirecting to dashboard...");
-        console.log("✅ GitHub authentication successful:", response);
+      const redirectUrl = AuthService.getGitHubAuthRedirect() || "/dashboard";
+      AuthService.clearGitHubAuthRedirect();
 
-        const redirectUrl = AuthService.getGitHubAuthRedirect();
-        AuthService.clearGitHubAuthRedirect();
-
-        setTimeout(() => router.push(redirectUrl), 1000);
-      } catch (err: unknown) {
-        console.error("❌ GitHub callback error:", err);
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : "GitHub authentication failed. Please try again.";
-        setError(errorMessage);
-        setTimeout(() => router.push("/login"), 3000);
-      }
-    };
-
-    handleCallback();
+      setTimeout(() => router.push(redirectUrl), 1000);
+    } catch (err) {
+      console.error("❌ GitHub callback error:", err);
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "GitHub authentication failed. Please try again.";
+      setError(errorMessage);
+      setTimeout(() => router.push("/login"), 3000);
+    }
   }, [searchParams, router]);
 
   return (
@@ -101,7 +98,14 @@ function GitHubCallbackInner() {
 
 export default function GitHubCallback() {
   return (
-    <Suspense fallback={<div className="text-white text-center mt-10">Loading...</div>}>
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
+        <div className="text-white text-center">
+          <div className="animate-spin h-12 w-12 text-indigo-500 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    }>
       <GitHubCallbackInner />
     </Suspense>
   );
