@@ -1,38 +1,35 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import AuthService from '@/app/services/Auth';
 
-export default function AuthSuccess() {
+function AuthSuccessInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [status, setStatus] = useState('Finalizing authentication...');
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const finalize = async () => {
-      const token = searchParams.get('token');
-      if (!token) {
-        setError('No token found in redirect.');
-        setTimeout(() => router.push('/login'), 2000);
-        return;
-      }
+    const token = searchParams.get('token');
+    if (!token) {
+      setError('No token found in redirect.');
+      setTimeout(() => router.push('/login'), 2000);
+      return;
+    }
 
-      try {
-        AuthService.handleGitHubSuccessRedirect(token);
-        setStatus('Success! Redirecting...');
+    try {
+      AuthService.handleGitHubSuccessRedirect(token);
+      setStatus('Success! Redirecting...');
 
-        const redirectUrl = AuthService.getGitHubAuthRedirect();
-        AuthService.clearGitHubAuthRedirect();
-        setTimeout(() => router.push(redirectUrl), 800);
-      } catch (e: any) {
-        setError(e?.message || 'Authentication failed.');
-        setTimeout(() => router.push('/login'), 2000);
-      }
-    };
-
-    finalize();
+      const redirectUrl = AuthService.getGitHubAuthRedirect() || '/dashboard';
+      AuthService.clearGitHubAuthRedirect();
+      setTimeout(() => router.push(redirectUrl), 800);
+    } catch (e: unknown) {
+      const errorMessage = e instanceof Error ? e.message : 'Authentication failed.';
+      setError(errorMessage);
+      setTimeout(() => router.push('/login'), 2000);
+    }
   }, [router, searchParams]);
 
   return (
@@ -51,6 +48,21 @@ export default function AuthSuccess() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AuthSuccess() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="max-w-md w-full p-6 bg-gray-800 rounded-lg shadow-lg text-center">
+          <div className="animate-spin h-12 w-12 text-indigo-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Loading...</p>
+        </div>
+      </div>
+    }>
+      <AuthSuccessInner />
+    </Suspense>
   );
 }
 
